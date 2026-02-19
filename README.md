@@ -69,7 +69,7 @@ Clicarem a afegir un usuari i plenarem el formulari, la part més important és 
 
 ## Instal·lació i activació dels plugins
 
-Ara accedirem a la pestanya de Plugins, on buscarem jwt-authentication-for-wp-rest-api, i instal·larem i activarem el plugin de la imatge:
+Ara accedirem a la pestanya de Plugins, on buscarem jwt-authentication-for-wp-rest-api, i instal·larem i activarem el plugin de la imatge, aquest ens permetrà autenticar-nos posteriorment per token:
 
 <img width="auto" height="270" alt="image" src="https://github.com/user-attachments/assets/77469c9b-f80e-4065-8cc6-219479a1c76f" />
 
@@ -109,7 +109,94 @@ define('JWT_AUTH_SECRET_KEY', 'clau');
 define('JWT_AUTH_CORS_ENABLE', true);
 ```
 
+# Obtenció del token
 
+Ara sols quedarà crear les pàgines, però primer haurem de conseguir un token per afegir al script i poder autenticar-se.
 
+Per a fer això, jo accedire al bash del docker on posaré el seguent curl:
+
+```
+curl -X POST "https://IP_del_WP/wp-json/jwt-auth/v1/token" \
+-H "Content-Type: application/json" \
+-d '{"username":"usuari","password":"contrasenya"}'
+```
+
+Això ens retornarà un token el qual copiarem per a continuar amb el seguent pas.
+
+# Creació del script
+
+Per últim, sols ens queda crear el script en JavaScript per poder crear pàgines, jo he usat el següent:
+ 
+```
+const JWT_TOKEN = "el_teu_token";
+const ESTAT = "draft";
+
+const htmlContent = `
+<html>
+`;
+
+async function muntarHTML() {
+  try {
+    console.log("Enviant contingut a WP...");
+
+    const res = await fetch(
+      "URL_RESTAPI_pàgines",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${JWT_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          title: "Pàgina muntada amb JS",
+          content: htmlContent,
+          status: ESTAT
+        })
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("Error tornat per WP", data);
+      alert("Error al muntar el contingut");
+      return;
+    }
+
+    console.log("Contingut muntat correctament:", data);
+    alert("Contingut muntat correctament");
+
+  } catch (error) {
+    console.error("Error de conexió:", error);
+    alert("Error de conexió amb WP");
+  }
+}
+
+muntarHTML();
+
+```
+
+Aquest code JS és una plantilla que ens permet migrar code html a pàgines de WP.
+
+Dalt de tot emmagatzemem en variables el token i el estat de la pàgina (publicat o borrador), tot seguit usant fetch fem un POST del cotingut a la pàgina, depenent del resultat ens donarà un code de error o de que surt correctament. En cas de error podem fer troubleshooting des de la consola, on guardem el code de error i el podem interpretar per atacar a les errades.
+
+Aquest JS el vinculo al següent html:
+```
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Muntar a WP</title>
+</head>
+<body>
+
+<button id="muntar" onclick="muntarHTML()">Muntar a WP</button>
+
+<script src="wprestapi.js"></script>
+</body>
+</html>
+```
+
+Aquest ens permet clicar per a tornar a executar el code JS per assegurar-nos de la muntada.
 
 
